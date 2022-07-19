@@ -1,0 +1,188 @@
+import os
+import sys
+import cv2
+import pprint
+import numpy as np
+
+# Flask
+from flask import Flask, redirect, url_for, request, render_template, Response, jsonify, redirect
+from werkzeug.utils import secure_filename
+from gevent.pywsgi import WSGIServer
+
+# TensorFlow and tf.keras
+import tensorflow as tf
+from tensorflow import keras
+from mtcnn.mtcnn import MTCNN
+
+
+from tensorflow.keras.applications.imagenet_utils import preprocess_input, decode_predictions
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+
+# Some utilites
+import numpy as np
+from util import base64_to_pil
+from preprocess import process_test
+from preprocess import process
+
+# Declare a flask app
+app = Flask(__name__)
+
+
+# You can use pretrained model from Keras
+# Check https://keras.io/applications/
+# or https://www.tensorflow.org/api_docs/python/tf/keras/applications
+
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+#model = MobileNetV2(weights='imagenet')
+
+#print('Model loaded. Check http://127.0.0.1:5000/')
+
+
+# Model saved with Keras model.save()
+MODEL_PATH = 'models\ImageEmptionClassifierModelVGG'
+
+# Load your own trained model
+model = load_model(MODEL_PATH)
+#model._make_predict_function()          # Necessary
+print('Model loaded. Start serving...')
+
+row = 80
+cox = 80
+# def process(imageName):
+#     output = None
+#     #check the format of image
+#     #if imageName.endswith('jpg') or imageName.endswith('png') or imageName.endswith('jpeg'):
+        
+#         # read the image in grayscale
+#     #grayscaleImage = cv2.imread(imageName, cv2.IMREAD_GRAYSCALE)
+#     image = cv2.imdecode(np.fromstring(imageName, np.uint8), cv2.IMREAD_GRAYSCALE)/ 255
+
+#         # resize the image 28 * 28
+#     output = cv2.resize(grayscaleImage, (80, 80))
+
+#     return output
+        
+
+    #return the resul
+    
+        
+
+    #return the result
+    # return output
+# TODO: we may need to assign output appropriately labelled here as output would be integers
+def category_output(prediction):
+  emotion_types = ["Damilola", "Damola", "David", "Fatimah", "Ismail", "Molola", "Oluleye", "Rasheed"] 
+  result = emotion_types[np.argmax(prediction)]
+  return result
+
+# Function to exctract the face region
+detector= MTCNN()
+from skimage.transform import resize
+def extract_face(image,resize=(224, 224)):
+  image= cv2.imread(image)
+  try:
+    faces = detector.detect_faces(image)
+    x1,y1,width,height = faces[0]['box']
+    x2,y2 = x1 + width ,y1 + height
+    image =  image[y1:y2 ,x1:x2]
+    image = cv2.resize(image,resize)
+  except:
+    pass
+  #grey_image = rgb2grey(face_image)
+  return image
+
+# def detect_face(img):
+  
+#   try:
+#     img = MTCNN.detect(img)
+#   except:
+#     pass
+
+#     return img
+
+# def category_output(prediction):
+#   emotion_types = ["Damilola", "Damola", "David", "Fatimah", "ismail", "molola", "Oluleye", "Rasheed"] 
+#   labels_class = np.array(prediction == 1.0, dtype='int')
+#   for i in labels_class:
+#     if 1 in labels_class:
+#       return emotion_types[np.argmax(labels_class)]
+#     else:
+#       return "No Object found"
+  
+# def model_predict(img, model):
+#     #img = img.resize((80, 80))
+
+#     # Preprocessing the image
+#     #x = cv2.imread(img, cv2.IMREAD_GRAYSCALE)
+#     #x = np.true_divide(x, 255)
+#     #x = np.expand_dims(x, axis=0)
+
+#     # Be careful how your trained model deals with the input
+#     # otherwise, it won't make correct prediction!
+#     x= img
+#     processed_img = np.array(x)
+#     feature_img = np.array(x).reshape(-1, 80, 80, 1)
+
+#     preds = model.predict(feature_img)
+#     return preds
+
+# def model_predict(img, model):
+#     img = img.resize((80, 80))
+
+#     # Preprocessing the image
+#     x = image.img_to_array(img)
+#     # x = np.true_divide(x, 255)
+#     #x = np.expand_dims(x, axis=0)
+#     x = np.array(x).reshape(-1, 80, 80, 1)
+#     # Be careful how your trained model deals with the input
+#     # otherwise, it won't make correct prediction!
+#     #x = preprocess_input(x, mode='tf')
+
+#     preds = model.predict(x)
+#     return preds
+
+
+@app.route('/', methods=['GET'])
+def index():
+    # Main page
+    return render_template(link)
+
+
+@app.route('/home, methods=['GET'])
+def home_page(link):
+    # Main page
+    return render_template(link'.html')
+
+
+@app.route('/predict', methods=['GET', 'POST'])
+def predict():
+    if request.method == 'POST':
+        # Get the image from post request
+        img = base64_to_pil(request.json)
+        img.save("./uploads/image.jpg")
+        filename = './uploads/image.jpg'
+        #img = cv2.imread(filename)
+        img = extract_face(filename)
+        img = cv2.resize(img,(224, 224))
+        img = image.img_to_array(img)
+        img = np.expand_dims(img, axis=0)
+        img = preprocess_input(img, mode='tf')
+        #img = detect_face(img)
+        #processed_img = np.array(img)
+        img = np.array(img).reshape(-1, 224, 224, 3)
+        #feature_img = np.array(processed_img).reshape(-1, 80, 80, 1)
+        output = model.predict(img)
+
+        output_class = category_output(output)
+        #print('Image: ',img, '\n') 
+        return jsonify(result=output_class)
+    return None
+
+
+if __name__ == '__main__':
+    # app.run(port=5002, threaded=False)
+
+    # Serve the app with gevent
+    http_server = WSGIServer(('0.0.0.0', 5000), app)
+    http_server.serve_forever()
