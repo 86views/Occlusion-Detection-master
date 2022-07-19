@@ -149,10 +149,20 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/home', methods=['GET'])
-def home_page():
-    # Main page
-    return render_template('home.html')
+# @app.route('/home', methods=['GET'])
+# def home_page():
+#     # Main page
+#     return render_template('home.html')
+
+@app.route("/home/")
+def view_home():
+    return render_template("home.html")
+
+    
+
+@app.route("/about/")
+def view_about():
+    return render_template("about.html")
 
 
 @app.route('/predict', methods=['GET', 'POST'])
