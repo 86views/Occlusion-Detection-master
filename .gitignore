@@ -23,8 +23,8 @@ instance/
 .idea/
 
 # Custom data directory
-uploads/*
-models/*
+# uploads/*
+# models/*
 
 !uploads/README.md
 !models/README.md
